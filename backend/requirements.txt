@@ -1,0 +1,29 @@
+# Core Backend Dependencies
+fastapi
+uvicorn
+pydantic
+starlette
+itsdangerous
+authlib
+python-jose[cryptography]
+python-dotenv
+httpx
+
+# Data & AI Dependencies
+chromadb
+sentence-transformers
+pandas
+numpy
+groq
+
+# Document & Image Processing
+easyocr
+pillow
+pypdf
+python-pptx
+python-docx
+openpyxl
+
+
+easyocr
+python-multipart
