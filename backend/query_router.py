@@ -10,48 +10,33 @@ MODEL = "llama-3.1-8b-instant"
 
 def route_query(query: str) -> str:
     """
-    Categorizes the query into DATA or SEMANTIC.
-    Uses rule-based detection first, then LLM refinement.
+    Categorizes the query into DATA or SEMANTIC for News context.
     """
     query_lower = query.lower()
     
-    # Interactive Check (Yes/No buttons)
-    if "yes, i am experiencing" in query_lower or "no, i don't have" in query_lower:
-        return "INTERACTIVE"
-
-    # Strict Semantic Overrides (Medical questions often start with 'What', 'How', 'Who')
+    # Simple rule-based detection for news
     semantic_prefixes = [
-        "what is", "what are", "how to", "who is", "describe", 
-        "explain", "symptoms of", "treatment for", "remedies for"
+        "what happened", "news about", "who said", "tell me about", 
+        "summarize", "headlines", "sentiment for"
     ]
-    if any(query_lower.startswith(prefix) for prefix in semantic_prefixes):
+    if any(prefix in query_lower for prefix in semantic_prefixes):
         return "SEMANTIC"
 
-    # Improved Rule-based detection
+    # DATA keywords for potential analytics
     data_keywords = [
-        "how many", "count", "average", "most", "highest", 
-        "lowest", "top", "least", "maximum", "minimum", "common",
-        "total", "sum", "percentage"
+        "how many", "count", "average", "top", "total", "percentage"
     ]
-    
     if any(keyword in query_lower for keyword in data_keywords):
-        # Double check: if it has data keywords but also "what is", it's likely semantic
-        # e.g. "What is the most common symptom?" -> still SEMANTIC for RAG
-        if not any(prefix in query_lower for prefix in semantic_prefixes):
-            return "DATA"
+        return "DATA"
 
-    # LLM Refinement for ambiguous queries
-    prompt = f"""Analyze this healthcare query: "{query}"
+    # LLM Refinement
+    prompt = f"""Analyze this news/financial query: "{query}"
     
     Classify into:
-    - DATA: If it requires calculation, statistics, counts, or finding a specific record attribute based on quantitative logic.
-    - SEMANTIC: If it asks for medical knowledge, descriptions, instructions, or qualitative information.
+    - DATA: If it requires statistics, counts, or finding a specific record attribute based on quantitative logic.
+    - SEMANTIC: If it asks for information retrieval, summaries, or qualitative news content.
     
-    Example DATA: "Which condition is most common?", "How many patients?"
-    Example SEMANTIC: "What are symptoms of cancer?", "Who treated Bobby Jackson?"
-    
-    Return ONLY 'DATA' or 'SEMANTIC'.
-    Classification:"""
+    Return ONLY 'DATA' or 'SEMANTIC'."""
 
     try:
         response = client.chat.completions.create(
@@ -62,33 +47,10 @@ def route_query(query: str) -> str:
         result = response.choices[0].message.content.strip().upper()
         return "DATA" if "DATA" in result else "SEMANTIC"
     except:
-        return "SEMANTIC" # Default fallback
+        return "SEMANTIC"
 
 def parse_data_intent(query: str):
     """
-    Extracts function name and parameters for the Data Engine.
+    Placeholder for news data analytics.
     """
-    prompt = f"""The user asked: "{query}"
-    
-    Map this to one of these functions:
-    1. count_condition(condition: str)
-    2. most_common_condition()
-    3. get_total_patients()
-
-    Return a JSON string like:
-    {{"function": "name", "params": {{"param_name": "value"}}}}
-    If no condition is mentioned, params should be empty.
-    
-    JSON:"""
-
-    try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={ "type": "json_object" },
-            temperature=0.0
-        )
-        import json
-        return json.loads(response.choices[0].message.content)
-    except:
-        return {"function": "unknown", "params": {}}
+    return {"function": "unknown", "params": {}}

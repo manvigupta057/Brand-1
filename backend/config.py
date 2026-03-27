@@ -1,20 +1,20 @@
 class Config:
-    CSV_PATH = r"c:\Users\manvi\Downloads\medical_dataset_10000_unique_patients.csv"
+    CSV_PATH = "brand_dataset.csv"  # Ensure the CSV is in the backend folder
     EMBEDDING_MODEL = "all-MiniLM-L6-v2"
     CHROMA_DB_DIR = "./chroma_db"
-    COLLECTION_NAME = "healthcare_docs"
+    COLLECTION_NAME = "brand_dataset"
     CHUNK_SIZE = 500
     CHUNK_OVERLAP = 50
-    MAX_SEARCH_RESULTS = 100
+    MAX_SEARCH_RESULTS = 20
     LLM_MODEL = "llama-3.1-8b-instant"
     LLM_TEMPERATURE = 0.0
     
-    PROMPT_TEMPLATE = """You are a strictly helpful assistant. Use ONLY the following pieces of context to answer the question at the end.
+    PROMPT_TEMPLATE = """You are a Brand Data Analyst. Use ONLY the provided brand information to answer the user's question.
     
     Rules:
-    1. Do NOT use any outside knowledge.
-    2. Use the provided context to answer the question.
-    3. You can infer structural information (like column names) from the data provided.
+    1. Do NOT use outside knowledge.
+    2. Incorporate the provided sentiment scores, market share, and SEO metrics into your answer if relevant.
+    3. Be precise with the brand's industry and target audience.
     
     Context:
     {context}

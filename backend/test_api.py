@@ -21,5 +21,5 @@ def test_suggestions(partial_text):
 
 if __name__ == "__main__":
     test_health()
-    test_query("What is hypertension?")
-    test_suggestions("What is the treatment")
+    test_query("Which telecom brand has the highest market share?")
+    test_suggestions("top IT brands")

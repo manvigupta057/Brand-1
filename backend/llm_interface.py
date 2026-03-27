@@ -6,35 +6,29 @@ load_dotenv()
 
 # Initialize Groq client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-MODEL = "llama-3.1-8b-instant"  # Fast and reliable Groq model
-
+MODEL = "llama-3.1-8b-instant"
 
 def generate_answer(query: str, context_chunks: list[str]) -> dict:
     """
-    Takes user question + retrieved dataset chunks,
-    sends to Groq LLM as an Expert Doctor, 
-    returns a JSON object with answer and a follow-up question.
+    Expert News Analyst answering based on DJI Headline context.
     """
     import json
     context = "\n\n".join(context_chunks)
 
-    prompt = f"""You are an Expert Medical Doctor and Data Analyst. Use the provided context to assist the user.
+    prompt = f"""You are an Expert News Analyst and Financial Data Researcher. 
+    Use the provided context (DJI Headlines) to assist the user.
     
-    IMPORTANT: Do NOT start your answer with phrases like "Based on the hospital records" or "According to the context". Provide your answer directly and professionally.
-
     TASK:
     1. Answer the user's question accurately based ONLY on the context.
-    2. Identify the primary disease name from the user's query. ALWAYS use the EXACT same terminology or phrasing the user used in their question (e.g., if they ask about 'bp', use 'Blood Pressure' or 'BP' in your response and follow-up, NOT 'Hypertension'). This applies universally to all conditions (Diabetes, Fever, etc.).
-    3. Propose ONE short, friendly follow-up question to check the user's symptoms related to that disease.
+    2. Provide a neutral, analytical summary.
+    3. Keep the response concise and professional.
     
     RESPONSE FORMAT (Strict JSON):
     {{
-        "answer": "Direct medical answer here...",
-        "disease": "Primary disease name",
-        "follow_up": "Your single symptom-check question here"
+        "answer": "Direct analytical answer here..."
     }}
 
-    Context (Hospital Records):
+    Context (Historical News Headlines):
     {context}
 
     User Question: {query}
@@ -50,31 +44,28 @@ def generate_answer(query: str, context_chunks: list[str]) -> dict:
         return json.loads(response.choices[0].message.content)
     except Exception as e:
         return {
-            "answer": "I encountered an error processing the medical records.",
-            "disease": "General",
-            "follow_up": "How can I help you further?"
+            "answer": "I encountered an error processing the historical archives."
         }
-
 
 def generate_suggestions(partial_query: str) -> list[str]:
     """
-    Takes partially typed text (min 3 words),
-    returns 5 relevant healthcare keyword suggestions.
+    Returns 5 relevant news/financial keyword suggestions.
     """
-    prompt = f"""The user is typing a healthcare-related query and has typed: "{partial_query}"
+    prompt = f"""The user is typing a news or financial query: "{partial_query}"
     
-    Suggest exactly 5 short, relevant healthcare keyword phrases to complete or extend this query.
+    Suggest exactly 5 short, relevant keyword phrases related to world news, markets, or the DJI headlines to complete this query.
     Return only the 5 suggestions as a numbered list, nothing else."""
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5
-    )
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5
+        )
 
-    raw = response.choices[0].message.content
-    # Parse numbered list into clean array
-    lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
-    suggestions = [line.split(". ", 1)[-1] for line in lines if line]
-    return suggestions[:5]
-
+        raw = response.choices[0].message.content
+        lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
+        suggestions = [line.split(". ", 1)[-1] for line in lines if line]
+        return suggestions[:5]
+    except:
+        return []
