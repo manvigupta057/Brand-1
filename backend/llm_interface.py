@@ -15,20 +15,21 @@ def generate_answer(query: str, context_chunks: list[str]) -> dict:
     import json
     context = "\n\n".join(context_chunks)
 
-    prompt = f"""You are an Expert News Analyst and Financial Data Researcher. 
-    Use the provided context (DJI Headlines) to assist the user.
+    prompt = f"""You are an Expert Brand Analyst and Business Researcher. 
+    Use the provided context (Brand Data) to assist the user.
     
     TASK:
     1. Answer the user's question accurately based ONLY on the context.
     2. Provide a neutral, analytical summary.
     3. Keep the response concise and professional.
+    4. MUST format the answer nicely in natural language. Do NOT output raw JSON dumps inside your answer.
     
     RESPONSE FORMAT (Strict JSON):
     {{
         "answer": "Direct analytical answer here..."
     }}
 
-    Context (Historical News Headlines):
+    Context (Brand Information):
     {context}
 
     User Question: {query}
@@ -51,9 +52,9 @@ def generate_suggestions(partial_query: str) -> list[str]:
     """
     Returns 5 relevant news/financial keyword suggestions.
     """
-    prompt = f"""The user is typing a news or financial query: "{partial_query}"
+    prompt = f"""The user is typing a business or financial query: "{partial_query}"
     
-    Suggest exactly 5 short, relevant keyword phrases related to world news, markets, or the DJI headlines to complete this query.
+    Suggest exactly 5 short, relevant keyword phrases related to brand performance, SEO scores, and market share to complete this query.
     Return only the 5 suggestions as a numbered list, nothing else."""
 
     try:

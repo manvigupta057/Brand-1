@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, BarChart2, Shield, Zap, Globe, MessageSquare } from 'lucide-react';
+import BrandTicker from '../BrandTicker';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -53,87 +54,28 @@ const Home = () => {
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 px-6 pt-24 pb-32 text-center">
+      <main className="relative z-10 px-6 pt-24 pb-12 text-center flex flex-col items-center">
+        
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold mb-12 animate-bounce">
           <Zap size={14} />
           <span>v2.0 Artificial Intelligence is here</span>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        {/* Clean Google Login Section */}
+        <div className="flex flex-col items-center justify-center gap-4 mb-20 z-20 relative">
           <button 
-            onClick={() => navigate('/chat')}
-            className="group px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-500 transition-all flex items-center gap-2 shadow-2xl shadow-blue-600/30"
+            onClick={() => window.location.href = 'http://localhost:8000/auth/login'}
+            className="group px-8 py-4 bg-white text-slate-900 rounded-full font-bold text-lg hover:bg-slate-100 transition-all flex items-center gap-3 shadow-xl hover:shadow-2xl hover:shadow-white/20 active:scale-95 border border-transparent"
           >
-            Launch AI Assistant
-            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />
+            Continue with Google
+            <ArrowRight size={20} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
           </button>
-          <button className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-bold text-lg hover:bg-white/10 transition-all">
-            View Documentation
-          </button>
+          <p className="text-slate-500 text-sm">Sign in to securely access the AI Chatbot</p>
         </div>
 
-        {/* Feature Grid */}
-        <section className="mt-40 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            {
-              icon: <Globe className="text-blue-400" />,
-              title: "Global Dataset",
-              desc: "Deep analysis across the comprehensive Combined DJI News archives."
-            },
-            {
-              icon: <Zap className="text-yellow-400" />,
-              title: "Instant Retrieval",
-              desc: "Millisecond response times using advanced Vector Search architecture."
-            },
-            {
-              icon: <Shield className="text-emerald-400" />,
-              title: "Sentiment Scoring",
-              desc: "Algorithmic classification of market-moving headlines and trends."
-            }
-          ].map((feature, i) => (
-            <div key={i} className="group p-8 rounded-3xl bg-white/[0.02] border border-white/[0.05] hover:border-blue-500/30 hover:bg-white/[0.04] transition-all text-left">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                {feature.icon}
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">{feature.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{feature.desc}</p>
-            </div>
-          ))}
-        </section>
-
-        {/* Floating Chat Preview Card */}
-        <div className="mt-40 relative max-w-5xl mx-auto p-4 rounded-[2.5rem] bg-gradient-to-b from-white/10 to-transparent border border-white/10 backdrop-blur-3xl overflow-hidden shadow-2xl">
-          <div className="absolute inset-0 bg-blue-600/5 pointer-events-none"></div>
-          <div className="relative flex items-center justify-between px-6 py-4 border-b border-white/5 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            </div>
-            <div className="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold tracking-widest text-slate-500">
-              SECURE ANALYTICS TERMINAL
-            </div>
-          </div>
-          
-          <div className="space-y-6 px-8 pb-12">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
-                <MessageSquare className="text-white" size={20} />
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl rounded-tl-none px-6 py-4 text-left max-w-[80%]">
-                <p className="text-slate-300 text-sm">Analyze the headlines for July 2nd, 2016. What was the general sentiment?</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4 flex-row-reverse">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0">
-                <Zap className="text-white" size={20} />
-              </div>
-              <div className="bg-indigo-600/20 border border-indigo-500/30 rounded-2xl rounded-tr-none px-6 py-4 text-left max-w-[80%]">
-                <p className="text-slate-200 text-sm">Based on the records, the sentiment was cautiously bullish. Multiple headlines pointed towards international market stabilization...</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Brand Ticker now sits beautifully isolated in the dark theme */}
+        <BrandTicker />
       </main>
 
       {/* Footer */}

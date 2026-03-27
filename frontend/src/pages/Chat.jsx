@@ -8,10 +8,22 @@ const API_BASE = 'http://localhost:8000';
 const Chat = () => {
   const navigate = useNavigate();
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setUser(payload);
+      } catch (e) {
+        console.error("Failed to parse JWT", e);
+      }
+    }
+  }, [token]);
 
   // Chat States
   const [messages, setMessages] = useState([
-    { role: 'ai', content: 'Hello! I am your AI News Analyst. Ask me anything about the DJI historical news archives.' }
+    { role: 'ai', content: 'Hello! I am your AI Brand Analyst. Ask me anything about brand performance, market share, and industry trends.' }
   ]);
   const [input, setInput] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -127,31 +139,50 @@ const Chat = () => {
           </div>
         </div>
 
-        <button onClick={logout} className="p-2 hover:bg-red-500/10 rounded-xl transition-colors text-slate-400 hover:text-red-400">
-          <LogOut size={20} />
-        </button>
+        <div className="flex items-center gap-4">
+          {user && (
+            <div className="flex items-center gap-3 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-inner uppercase">
+                {user.name ? user.name.charAt(0) : <User size={14} />}
+              </div>
+              <div className="flex flex-col pr-2">
+                <span className="text-[13px] font-bold text-white leading-tight">
+                  {user.name || "User"}
+                </span>
+                <span className="text-[10px] text-slate-400 leading-tight">
+                  {user.sub || "Authenticated"}
+                </span>
+              </div>
+            </div>
+          )}
+          <button onClick={logout} title="Logout" className="p-2 bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 rounded-xl transition-all text-slate-400 hover:text-red-400">
+            <LogOut size={18} />
+          </button>
+        </div>
       </nav>
 
       {/* Chat Area */}
       <div className="flex-1 max-w-5xl w-full mx-auto p-4 flex flex-col overflow-hidden relative">
         <div className="flex-1 overflow-y-auto space-y-8 px-4 pb-32 pt-8 scrollbar-hide">
-          {messages.map((msg, idx) => (
+          {messages.map((msg, idx) => {
+            const safeContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+            return (
             <div key={idx} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-slate-800' : 'bg-blue-600'}`}>
                 {msg.role === 'user' ? <User size={20} /> : <Zap size={20} />}
               </div>
               <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
-                <p className="text-sm leading-relaxed">{msg.content}</p>
+                <p className="text-sm leading-relaxed">{safeContent}</p>
               </div>
             </div>
-          ))}
+          )})}
           {isLoading && (
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-lg animate-pulse">
                 <Loader2 size={20} className="animate-spin" />
               </div>
               <div className="bg-white/5 border border-white/10 px-6 py-4 rounded-3xl rounded-tl-none backdrop-blur-md italic text-slate-500 text-sm">
-                Scanning historical archives...
+                Scanning brand dataset...
               </div>
             </div>
           )}
@@ -161,7 +192,9 @@ const Chat = () => {
         {/* Suggestion Chips */}
         {suggestions.length > 0 && (
           <div className="absolute bottom-24 left-0 right-0 px-4 flex flex-wrap gap-2 justify-center animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {suggestions.map((s, i) => (
+            {suggestions.map((s, i) => {
+              if (typeof s !== 'string') return null;
+              return (
               <button
                 key={i}
                 onClick={() => {
@@ -178,7 +211,7 @@ const Chat = () => {
               >
                 {s}
               </button>
-            ))}
+            )})}
           </div>
         )}
 
@@ -189,7 +222,7 @@ const Chat = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Query headlines or sentiment..."
+              placeholder="Query brand data or market share..."
               className="flex-1 bg-transparent px-6 py-3 outline-none text-slate-200 placeholder:text-slate-500 text-sm font-light"
               disabled={isLoading}
             />

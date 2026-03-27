@@ -8,6 +8,7 @@ from vector_store import search_similar
 from llm_interface import generate_answer, generate_suggestions
 from auth import router as auth_router
 from query_router import route_query, parse_data_intent
+from pandas_engine import execute_data_query
 
 app = FastAPI(title="AI News Analyst API")
 
@@ -33,11 +34,13 @@ async def query_endpoint(request: QueryRequest):
     query = request.query
     category = route_query(query)
     
-    # Simple RAG flow for news
-    context_chunks = search_similar(query, top_k=5)
-    llm_res = generate_answer(query, context_chunks)
-    
-    answer = llm_res.get("answer", "I couldn't find a specific answer in the archives.")
+    if category == "DATA":
+        answer = execute_data_query(query)
+    else:
+        # Simple RAG flow for news
+        context_chunks = search_similar(query, top_k=5)
+        llm_res = generate_answer(query, context_chunks)
+        answer = llm_res.get("answer", "I couldn't find a specific answer in the archives.")
     
     return {
         "query": query,

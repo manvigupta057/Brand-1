@@ -10,7 +10,7 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
 # Load the dataset once
-CSV_PATH = r"c:\Users\manvi\Downloads\archive\healthcare_dataset.csv"
+CSV_PATH = "brand_dataset.csv"
 if os.path.exists(CSV_PATH):
     df = pd.read_csv(CSV_PATH)
     print(f"Pandas Engine: Loaded {len(df)} records.")
@@ -20,7 +20,7 @@ else:
 
 def execute_data_query(query: str) -> str:
     """
-    Translates natural language to Pandas code and executes it.
+    Translates natural language to Pandas code, executes it, and formats it naturally.
     """
     if df.empty:
         return "Dataset not loaded."
@@ -28,15 +28,14 @@ def execute_data_query(query: str) -> str:
     columns = list(df.columns)
     
     prompt = f"""You are a Python expert focused on Pandas.
-    The user has a dataset 'df' with these columns: {columns}
+    The user has a DataFrame 'df' with these columns: {columns}
     
-    Translate the user's natural language question into a SINGLE LINE of Python code that calculates the answer from 'df'.
+    Translate the user's natural language question into a SINGLE LINE of Python code that evaluates to the answer from 'df'.
     
     Rules:
-    1. Respond ONLY with the code string. No explanations.
-    2. Example output for "Total count": len(df)
-    3. Example output for "Average age": df['Age'].mean()
-    4. Example output for "Most common gender": df['Gender'].mode()[0]
+    1. Respond ONLY with the raw python code string. No explanations, no markdown blocks.
+    2. Example for "count": len(df[...])
+    3. Example for "list names": df[...]['brand_name'].tolist()
     
     Question: {query}
     Code:"""
@@ -47,16 +46,30 @@ def execute_data_query(query: str) -> str:
         temperature=0.0
     )
 
-    code = response.choices[0].message.content.strip()
+    code = response.choices[0].message.content.strip().replace("```python", "").replace("```", "").strip()
     
-    # Safety check: basic filter
-    safe_keywords = ["df", "len", "mean", "count", "sum", "min", "max", "mode", "iloc", "loc"]
-    if not any(k in code for k in safe_keywords) or "os" in code or "sys" in code:
-        return f"Query blocked for safety or invalid: {code}"
-
     try:
         # Execute the generated code on the 'df' variable
-        result = eval(code)
-        return str(result)
+        raw_result = eval(code)
+        
+        # Protect against Pandas Series/DataFrame printing issues confusing the LLM
+        if hasattr(raw_result, "tolist") and not hasattr(raw_result, "columns"):
+            raw_result = raw_result.tolist()
+        elif hasattr(raw_result, "to_dict"):
+            raw_result = raw_result.to_dict(orient="records")
+        
+        # Step 2: Format naturally
+        format_prompt = f"""The user asked: "{query}"
+        The exact data result fetched from the database is: {raw_result}
+        
+        Write a very concise, natural language response providing this data to the user. Do not explain the code."""
+        
+        format_response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": format_prompt}],
+            temperature=0.5
+        )
+        return format_response.choices[0].message.content.strip()
+        
     except Exception as e:
-        return f"Error executing query logic: {e} (Code generated: {code})"
+        return f"Sorry, I couldn't execute analytics for that query. (Error: {e})"

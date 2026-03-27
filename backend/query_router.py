@@ -24,7 +24,7 @@ def route_query(query: str) -> str:
 
     # DATA keywords for potential analytics
     data_keywords = [
-        "how many", "count", "average", "top", "total", "percentage"
+        "how many", "count", "average", "top", "total", "percentage", "score", "list", "highest", "which brand", "show"
     ]
     if any(keyword in query_lower for keyword in data_keywords):
         return "DATA"
