@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
 import MiniCalendar from "components/calendar/MiniCalendar";
 import WeeklyRevenue from "views/admin/default/components/WeeklyRevenue";
 import TotalSpent from "views/admin/default/components/TotalSpent";
@@ -17,30 +19,58 @@ import tableDataCheck from "./variables/tableDataCheck.json";
 import tableDataComplex from "./variables/tableDataComplex.json";
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    total_brands: "---",
+    avg_seo: "---",
+    avg_sentiment: "---",
+    avg_market_share: "---"
+  });
+
+  useEffect(() => {
+    // Check if backend is reachable
+    axios.get("http://localhost:8000/api/stats")
+      .then(res => {
+        setStats({
+          total_brands: res.data.total_brands.toLocaleString(),
+          avg_seo: res.data.avg_seo,
+          avg_sentiment: res.data.avg_sentiment,
+          avg_market_share: res.data.avg_market_share + "%"
+        });
+      })
+      .catch(err => {
+        console.error("API Error:", err);
+        setStats({
+          total_brands: "Error",
+          avg_seo: "Error",
+          avg_sentiment: "Error",
+          avg_market_share: "Error"
+        });
+      });
+  }, []);
+
   return (
     <div>
       {/* Card widget */}
-
       <div className="mt-3 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-3 3xl:grid-cols-6">
         <Widget
           icon={<MdBarChart className="h-7 w-7" />}
-          title={"Earnings"}
-          subtitle={"$340.5"}
+          title={"Total Brands"}
+          subtitle={stats.total_brands}
         />
         <Widget
           icon={<IoDocuments className="h-6 w-6" />}
-          title={"Spend this month"}
-          subtitle={"$642.39"}
+          title={"Avg SEO Score"}
+          subtitle={stats.avg_seo}
         />
         <Widget
           icon={<MdBarChart className="h-7 w-7" />}
-          title={"Sales"}
-          subtitle={"$574.34"}
+          title={"Avg Sentiment Score"}
+          subtitle={stats.avg_sentiment}
         />
         <Widget
           icon={<MdDashboard className="h-6 w-6" />}
-          title={"Your Balance"}
-          subtitle={"$1,000"}
+          title={"Avg Market Share"}
+          subtitle={stats.avg_market_share}
         />
         <Widget
           icon={<MdBarChart className="h-7 w-7" />}
@@ -53,6 +83,7 @@ const Dashboard = () => {
           subtitle={"$2433"}
         />
       </div>
+
 
       {/* Charts */}
 
