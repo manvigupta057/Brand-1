@@ -9,8 +9,10 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
-# Load the dataset once
-CSV_PATH = "brand_dataset.csv"
+# Standardize path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_PATH = os.path.join(BASE_DIR, "brand_dataset.csv")
+
 if os.path.exists(CSV_PATH):
     df = pd.read_csv(CSV_PATH)
     print(f"Pandas Engine: Loaded {len(df)} records.")
