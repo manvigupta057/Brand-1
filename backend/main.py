@@ -4,6 +4,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 import os
 import pandas as pd
+from ai_config import load_configs, save_configs
+import uuid
+from datetime import datetime
 
 # Standardize path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +47,11 @@ class BrandData(BaseModel):
     years_in_market: int = 1
     audience_reach: int = 0
     reviews: int = 0
+
+class AISetup(BaseModel):
+    name: str
+    model: str
+    prompt: str
 
 @app.post("/query")
 async def query_endpoint(request: QueryRequest):
@@ -160,3 +168,48 @@ def health():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+@app.get("/api/ai-configs")
+def get_ai_configs():
+    return load_configs()
+
+@app.post("/api/ai-configs")
+def create_ai_config(setup: AISetup):
+    configs = load_configs()
+    new_entry = {
+        "id": str(uuid.uuid4()),
+        "name": setup.name,
+        "model": setup.model,
+        "prompt": setup.prompt,
+        "is_active": False,
+        "created_at": datetime.now().isoformat()
+    }
+    configs.append(new_entry)
+    save_configs(configs)
+    return new_entry
+
+@app.put("/api/ai-configs/{config_id}")
+def update_ai_config(config_id: str, setup: AISetup):
+    configs = load_configs()
+    for c in configs:
+        if c["id"] == config_id:
+            c["name"] = setup.name
+            c["model"] = setup.model
+            c["prompt"] = setup.prompt
+    save_configs(configs)
+    return {"status": "Updated"}
+
+@app.delete("/api/ai-configs/{config_id}")
+def delete_ai_config(config_id: str):
+    configs = load_configs()
+    configs = [c for c in configs if c["id"] != config_id]
+    save_configs(configs)
+    return {"status": "Deleted"}
+
+@app.patch("/api/ai-configs/{config_id}/activate")
+def activate_ai_config(config_id: str):
+    configs = load_configs()
+    for c in configs:
+        c["is_active"] = (c["id"] == config_id)
+    save_configs(configs)
+    return {"status": "Activated"}

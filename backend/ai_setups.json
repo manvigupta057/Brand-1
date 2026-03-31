@@ -1,0 +1,10 @@
+[
+  {
+    "id": "1",
+    "name": "Default Brand Routing",
+    "model": "llama-3.1-8b-instant",
+    "prompt": "Classify the user query into DATA or SEMANTIC. Return only DATA or SEMANTIC.",
+    "is_active": true,
+    "created_at": "2026-03-31T10:00:00"
+  }
+]
