@@ -7,6 +7,7 @@ import pandas as pd
 from ai_config import load_configs, save_configs
 import uuid
 from datetime import datetime
+from vector_store import get_embedding_model
 
 # Standardize path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -56,17 +57,23 @@ class AISetup(BaseModel):
 @app.post("/query")
 async def query_endpoint(request: QueryRequest):
     query = request.query
-    category = route_query(query)
+
+    model = get_embedding_model()
+    query_vector = model.encode(query).tolist()
+    print(f"\nUser Question Embedding Generated! Size: {len(query_vector)}")
+    print(f"[DEBUG] Vector preview: {query_vector[:3]}...") 
+
+    category = route_query(user_query)
 
     if category == "DATA":
-        answer = execute_data_query(query)
+        answer = execute_data_query(user_query)
     else:
         context_chunks = search_similar(query, top_k=5)
-        llm_res = generate_answer(query, context_chunks)
+        llm_res = generate_answer(user_query, context_chunks)
         answer = llm_res.get("answer", "I couldn't find a specific answer in the archives.")
 
     return {
-        "query": query,
+        "query": user_query,
         "answer": answer,
         "category": category,
         "user": "Demo User"
@@ -176,11 +183,16 @@ def get_ai_configs():
 @app.post("/api/ai-configs")
 def create_ai_config(setup: AISetup):
     configs = load_configs()
+
+    model = get_embedding_model()
+    prompt_vector = model.encode(setup.prompt).tolist()
+
     new_entry = {
         "id": str(uuid.uuid4()),
         "name": setup.name,
         "model": setup.model,
         "prompt": setup.prompt,
+        "embedding": prompt_vector,
         "is_active": False,
         "created_at": datetime.now().isoformat()
     }
@@ -191,11 +203,15 @@ def create_ai_config(setup: AISetup):
 @app.put("/api/ai-configs/{config_id}")
 def update_ai_config(config_id: str, setup: AISetup):
     configs = load_configs()
+
+    model =  get_embedding_model()
+    prompt_vector = model.encode(setup.prompt).tolist()
     for c in configs:
         if c["id"] == config_id:
             c["name"] = setup.name
             c["model"] = setup.model
             c["prompt"] = setup.prompt
+            c["embedding"] = prompt_vector
     save_configs(configs)
     return {"status": "Updated"}
 

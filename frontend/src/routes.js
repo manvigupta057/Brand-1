@@ -1,5 +1,5 @@
 import React from "react";
-
+import AISettings from "views/admin/aiSettings";
 // Admin Imports
 import MainDashboard from "views/admin/default";
 import Profile from "views/admin/profile";
@@ -19,6 +19,12 @@ const routes = [
     path: "default",
     icon: <MdHome className="h-6 w-6" />,
     component: <MainDashboard />,
+  },
+  {
+  name: "AI Settings",
+  layout: "/admin",
+  path: "ai-settings",
+  component: <AISettings />,
   },
   {
     name: "Brands Table",

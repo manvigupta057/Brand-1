@@ -2,6 +2,7 @@ import re
 import os
 from groq import Groq
 from dotenv import load_dotenv
+from ai_config import get_active_config
 
 load_dotenv()
 
@@ -9,35 +10,14 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
 def route_query(query: str) -> str:
-    """
-    Categorizes the query into DATA or SEMANTIC for News context.
-    """
-    query_lower = query.lower()
+    config = get_active_config()
+    MODEL = config["model"]
+    routing_prompt = config["prompt"]
     
-    # Simple rule-based detection for news
-    semantic_prefixes = [
-        "what happened", "news about", "who said", "tell me about", 
-        "summarize", "headlines", "sentiment for"
-    ]
-    if any(prefix in query_lower for prefix in semantic_prefixes):
-        return "SEMANTIC"
-
-    # DATA keywords for potential analytics
-    data_keywords = [
-        "how many", "count", "average", "top", "total", "percentage", "score", "list", "highest", "which brand", "show"
-    ]
-    if any(keyword in query_lower for keyword in data_keywords):
-        return "DATA"
-
-    # LLM Refinement
-    prompt = f"""Analyze this news/financial query: "{query}"
-    
-    Classify into:
-    - DATA: If it requires statistics, counts, or finding a specific record attribute based on quantitative logic.
-    - SEMANTIC: If it asks for information retrieval, summaries, or qualitative news content.
-    
+    # 1. AI FIRST (Ensures your dynamic prompt is respected)
+    prompt = f"""{routing_prompt}
+    Query: "{query}"
     Return ONLY 'DATA' or 'SEMANTIC'."""
-
     try:
         response = client.chat.completions.create(
             model=MODEL,
@@ -45,9 +25,20 @@ def route_query(query: str) -> str:
             temperature=0.0
         )
         result = response.choices[0].message.content.strip().upper()
-        return "DATA" if "DATA" in result else "SEMANTIC"
-    except:
-        return "SEMANTIC"
+        # If the AI says DATA or SEMANTIC, we trust it immediately
+        if "DATA" in result: return "DATA"
+        if "SEMANTIC" in result: return "SEMANTIC"
+    except Exception as e:
+        print(f"AI Routing Error: {e}")
+        pass # Fallback to hardcoded rules if AI fails
+    # 2. FALLBACK RULES (Check keywords only if AI fails)
+    query_lower = query.lower()
+    
+    # ... (Keep your existing keyword lists here as a safety net)
+    if any(keyword in query_lower for keyword in data_keywords):
+        return "DATA"
+        
+    return "SEMANTIC"
 
 def parse_data_intent(query: str):
     """
