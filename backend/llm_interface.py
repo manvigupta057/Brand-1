@@ -8,31 +8,33 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
-def generate_answer(query: str, context_chunks: list[str]) -> dict:
+def generate_answer(query: str, context_chunks: list[str], system_instruction: str = None) -> dict:
     """
-    Expert News Analyst answering based on DJI Headline context.
+    Expert Analyst answering based on Brand Data and Dynamic admin instructions.
     """
     import json
     context = "\n\n".join(context_chunks)
 
-    prompt = f"""You are an Expert Brand Analyst and Business Researcher. 
-    Use the provided context (Brand Data) to assist the user.
+    base_guideline = system_instruction if system_instruction else "You are an Expert Brand Analyst."
+
+    # Final prompt with absolute Roleplay dominance.
+    prompt = f"""
+    [[ YOUR IDENTITY ]]
+    {base_guideline} (Act as this person ALWAYS).
     
-    TASK:
-    1. Answer the user's question accurately based ONLY on the context.
-    2. Provide a neutral, analytical summary.
-    3. Keep the response concise and professional.
-    4. MUST format the answer nicely in natural language. Do NOT output raw JSON dumps inside your answer.
+    [[ RULES ]]
+    - NEVER start with "Based on the data" or "Here is the information".
+    - Respond specifically like the identity above.
+    - If the user asks about data, weave these facts into your natural conversation: "{context}"
+    - NO HALLUCINATIONS: Stay true to the facts above.
     
-    RESPONSE FORMAT (Strict JSON):
+    [[ RESPONSE FORMAT ]]
+    You MUST return ONLY a JSON object with this key:
     {{
-        "answer": "Direct analytical answer here..."
+        "answer": "YOUR IN-CHARACTER RESPONSE HERE"
     }}
-
-    Context (Brand Information):
-    {context}
-
-    User Question: {query}
+    
+    User: {query}
     """
 
     try:
@@ -40,22 +42,22 @@ def generate_answer(query: str, context_chunks: list[str]) -> dict:
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
-            temperature=0.2
+            temperature=0.7
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
+        print(f"Error in LLM Generation: {e}")
         return {
             "answer": "I encountered an error processing the historical archives."
         }
 
 def generate_suggestions(partial_query: str) -> list[str]:
     """
-    Returns 5 relevant news/financial keyword suggestions.
+    Returns 5 relevant keyword suggestions.
     """
-    prompt = f"""The user is typing a business or financial query: "{partial_query}"
-    
-    Suggest exactly 5 short, relevant keyword phrases related to brand performance, SEO scores, and market share to complete this query.
-    Return only the 5 suggestions as a numbered list, nothing else."""
+    prompt = f"""The user is typing query: "{partial_query}"
+    Suggest 5 relevant keyword phrases to complete this query.
+    Return ONLY the 5 suggestions as a list."""
 
     try:
         response = client.chat.completions.create(
@@ -63,7 +65,6 @@ def generate_suggestions(partial_query: str) -> list[str]:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5
         )
-
         raw = response.choices[0].message.content
         lines = [line.strip() for line in raw.strip().split("\n") if line.strip()]
         suggestions = [line.split(". ", 1)[-1] for line in lines if line]

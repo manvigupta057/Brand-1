@@ -239,7 +239,7 @@ body {
   height: 100%;
 }
 
-.doctor-bg-circle {
+.hero-bg-circle {
   position: absolute;
   top: 50%;
   left: 55%;
@@ -251,7 +251,7 @@ body {
   z-index: 0;
 }
 
-.hero-doctor-img {
+.hero-main-img {
   position: relative;
   z-index: 2;
   height: auto;
@@ -311,8 +311,8 @@ body {
 
 @media (max-width: 1200px) {
   .hero-heading { font-size: 3.5rem; }
-  .doctor-bg-circle { width: 500px; height: 500px; }
-  .hero-doctor-img { height: 550px; }
+  .hero-bg-circle { width: 500px; height: 500px; }
+  .hero-main-img { height: 550px; }
 }
 
 @media (max-width: 1024px) {

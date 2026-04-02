@@ -10,14 +10,15 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
 def route_query(query: str) -> str:
-    config = get_active_config()
-    MODEL = config["model"]
-    routing_prompt = config["prompt"]
+    # 1. FIXED Classification Instructions (Don't let admin prompts confuse the router)
+    prompt = f"""Classify the user query into one of two categories:
+    1. 'DATA': If the user is asking for specific numbers, brand lists, counts, market shares, or analytics.
+    2. 'SEMANTIC': If the user is just greeting, saying 'Hi', 'Hello', 'How are you?', or asking general non-data questions.
     
-    # 1. AI FIRST (Ensures your dynamic prompt is respected)
-    prompt = f"""{routing_prompt}
-    Query: "{query}"
+    User Query: "{query}"
+    
     Return ONLY 'DATA' or 'SEMANTIC'."""
+    
     try:
         response = client.chat.completions.create(
             model=MODEL,
@@ -25,7 +26,6 @@ def route_query(query: str) -> str:
             temperature=0.0
         )
         result = response.choices[0].message.content.strip().upper()
-        # If the AI says DATA or SEMANTIC, we trust it immediately
         if "DATA" in result: return "DATA"
         if "SEMANTIC" in result: return "SEMANTIC"
     except Exception as e:

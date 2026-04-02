@@ -4,8 +4,13 @@ from datetime import datetime
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "ai_setups.json")
 
 def load_configs():
-    with open(CONFIG_PATH, "r") as f:
-        return json.load(f)
+    if not os.path.exists(CONFIG_PATH):
+        return []
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            return json.load(f)
+    except:
+        return []
 
 def save_configs(data):
     with open(CONFIG_PATH, "w") as f:
@@ -13,11 +18,8 @@ def save_configs(data):
 
 def get_active_config():
     configs = load_configs()
+    # Puraane sync errors ko handle karne ke liye sakht check
     for c in configs:
-        if c.get("is_active"):
+        if c.get("is_active") == True:
             return c
-    # Fallback if nothing is active
-    return {
-        "model": "llama-3.1-8b-instant",
-        "prompt": "Classify the user query into DATA or SEMANTIC."
-    }
+    return None

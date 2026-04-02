@@ -24,7 +24,7 @@ def get_embedding_model():
 def search_similar(query: str, top_k: int = 5) -> list[str]:
     """
     Takes the user's question, converts it to a vector,
-    finds the most similar rows in the healthcare dataset.
+    finds the most similar rows in the brand dataset.
     Returns top_k matching text chunks.
     """
     # Convert user query to embedding via getter

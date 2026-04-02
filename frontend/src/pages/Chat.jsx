@@ -45,7 +45,7 @@ const Chat = () => {
       const words = input.trim().split(/\s+/);
       if (words.length >= 3) {
         try {
-          const response = await axios.post(`${API_BASE}/suggestions`, 
+          const response = await axios.post(`${API_BASE}/suggestions`,
             { text: input },
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -70,28 +70,29 @@ const Chat = () => {
 
   const handleSendMessage = async (e, messageOverride = null) => {
     if (e) e.preventDefault();
-    
+
     const messageText = messageOverride || input;
     if (!messageText.trim()) return;
 
     const userMessage = messageText.trim();
     if (!messageOverride) setInput('');
-    
+
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_BASE}/query`, 
-        { 
-          query: userMessage
+      const response = await axios.post(`${API_BASE}/query`,
+        {
+          query: userMessage,
+          history: messages
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const { answer } = response.data;
 
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
+      setMessages(prev => [...prev, {
+        role: 'ai',
         content: answer
       }]);
 
@@ -107,17 +108,17 @@ const Chat = () => {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-white/[0.02] border border-white/10 p-10 rounded-[2.5rem] backdrop-blur-xl text-center">
-            <h2 className="text-3xl font-black text-white mb-4">Verification Required</h2>
-            <p className="text-slate-400 mb-8">Please sign in to access the AI Analytics Terminal.</p>
-            <button
-                onClick={() => window.location.href = `${API_BASE}/auth/login`}
-                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20"
-            >
-                Continue with Google
-            </button>
-            <button onClick={() => navigate('/')} className="mt-6 text-slate-500 text-sm hover:text-slate-300">
-                Back to Home
-            </button>
+          <h2 className="text-3xl font-black text-white mb-4">Verification Required</h2>
+          <p className="text-slate-400 mb-8">Please sign in to access the AI Analytics Terminal.</p>
+          <button
+            onClick={() => window.location.href = `${API_BASE}/auth/login`}
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20"
+          >
+            Continue with Google
+          </button>
+          <button onClick={() => navigate('/')} className="mt-6 text-slate-500 text-sm hover:text-slate-300">
+            Back to Home
+          </button>
         </div>
       </div>
     );
@@ -167,15 +168,16 @@ const Chat = () => {
           {messages.map((msg, idx) => {
             const safeContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
             return (
-            <div key={idx} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-slate-800' : 'bg-blue-600'}`}>
-                {msg.role === 'user' ? <User size={20} /> : <Zap size={20} />}
+              <div key={idx} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-slate-800' : 'bg-blue-600'}`}>
+                  {msg.role === 'user' ? <User size={20} /> : <Zap size={20} />}
+                </div>
+                <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
+                  <p className="text-sm leading-relaxed">{safeContent}</p>
+                </div>
               </div>
-              <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
-                <p className="text-sm leading-relaxed">{safeContent}</p>
-              </div>
-            </div>
-          )})}
+            )
+          })}
           {isLoading && (
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0 shadow-lg animate-pulse">
@@ -195,23 +197,24 @@ const Chat = () => {
             {suggestions.map((s, i) => {
               if (typeof s !== 'string') return null;
               return (
-              <button
-                key={i}
-                onClick={() => {
-                  const currentInput = input.trim().toLowerCase();
-                  const suggestion = s.toLowerCase();
-                  if (suggestion.startsWith(currentInput)) {
-                    setInput(s);
-                  } else {
-                    setInput(prev => `${prev.trim()} ${s}`.trim());
-                  }
-                  setSuggestions([]);
-                }}
-                className="bg-white/10 border border-blue-500/30 text-blue-400 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-blue-500/20 transition-colors backdrop-blur-md"
-              >
-                {s}
-              </button>
-            )})}
+                <button
+                  key={i}
+                  onClick={() => {
+                    const currentInput = input.trim().toLowerCase();
+                    const suggestion = s.toLowerCase();
+                    if (suggestion.startsWith(currentInput)) {
+                      setInput(s);
+                    } else {
+                      setInput(prev => `${prev.trim()} ${s}`.trim());
+                    }
+                    setSuggestions([]);
+                  }}
+                  className="bg-white/10 border border-blue-500/30 text-blue-400 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-blue-500/20 transition-colors backdrop-blur-md"
+                >
+                  {s}
+                </button>
+              )
+            })}
           </div>
         )}
 
