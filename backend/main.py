@@ -1,3 +1,4 @@
+import dotenv
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -8,6 +9,8 @@ import pandas as pd
 import uuid
 from datetime import datetime
 import numpy as np
+import mlflow
+from dotenv import load_dotenv
 
 # Import custom modules
 from ai_config import load_configs, save_configs
@@ -16,6 +19,10 @@ from llm_interface import generate_answer, generate_suggestions
 from auth import router as auth_router
 from query_router import route_query, parse_data_intent
 from pandas_engine import execute_data_query
+
+load_dotenv()
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_experiment("Brand_Analyst_AI")
 
 # app must be defined FIRST before any @app decorators
 app = FastAPI(title="Brand Analyst AI API")
@@ -63,9 +70,11 @@ def calculate_cosine_similarity(v1, v2):
     return float(score)
 
 def resolve_query_context(query: str, history: list[dict]) -> str:
-    """
-    Uses LLM to resolve pronouns like 'its', 'their', 'that' based on history.
-    """
+    # 🕵️ GREETING PROTECTION: Don't rewrite simple greetings
+    greetings = ["hello", "hi", "hey", "good morning", "good afternoon", "gm", "gn"]
+    if query.strip().lower().rstrip('?').rstrip('!') in greetings:
+        return query
+        
     if not history:
         return query
         
@@ -104,6 +113,30 @@ def resolve_query_context(query: str, history: list[dict]) -> str:
 async def query_endpoint(request: QueryRequest):
     # Resolve context/pronouns first
     user_query = resolve_query_context(request.query, request.history)
+
+    model = get_embedding_model()
+    query_vector = model.encode(user_query).tolist()
+
+    configs = load_configs()
+    active_entry = next((c for c in configs if c.get("is_active")), None)
+    instruction_to_use = active_entry["prompt"] if active_entry else "You are a Brand Analyst."
+
+    context_chunks = search_similar(user_query, top_k=3)
+
+    llm_res = generate_answer(
+        query=user_query,
+        context_chunks=context_chunks,
+        chat_history=request.history,
+        system_instruction=instruction_to_use
+    )
+    answer = llm_res.get("answer", "I didn't quite get that.")
+
+    return{
+        "query": user_query,
+        "answer": answer,
+        "category": "BRAND_COACH",
+        "user": "Auth User"
+    }
 
     model = get_embedding_model()
     query_vector = model.encode(user_query).tolist()

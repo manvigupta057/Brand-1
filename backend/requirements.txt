@@ -27,3 +27,6 @@ openpyxl
 
 easyocr
 python-multipart
+mlflow
+
+mlflow

@@ -8,48 +8,78 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 MODEL = "llama-3.1-8b-instant"
 
-def generate_answer(query: str, context_chunks: list[str], system_instruction: str = None) -> dict:
-    """
-    Expert Analyst answering based on Brand Data and Dynamic admin instructions.
-    """
+def generate_answer(query: str, context_chunks: list[str], chat_history: list[dict], system_instruction: str = None) -> dict:
     import json
-    context = "\n\n".join(context_chunks)
-
-    base_guideline = system_instruction if system_instruction else "You are an Expert Brand Analyst."
-
-    # Final prompt with absolute Roleplay dominance.
-    prompt = f"""
-    [[ YOUR IDENTITY ]]
-    {base_guideline} (Act as this person ALWAYS).
+    import mlflow
     
-    [[ RULES ]]
-    - NEVER start with "Based on the data" or "Here is the information".
-    - Respond specifically like the identity above.
-    - If the user asks about data, weave these facts into your natural conversation: "{context}"
-    - NO HALLUCINATIONS: Stay true to the facts above.
+    # 🕵️ GREETING DETECTION: If it's a simple greeting, don't use RAG context.
+    greetings = ["hello", "hi", "hey", "good morning", "good afternoon", "gm", "gn"]
+    is_greeting = query.strip().lower().rstrip('?').rstrip('!') in greetings
     
-    [[ RESPONSE FORMAT ]]
-    You MUST return ONLY a JSON object with this key:
-    {{
-        "answer": "YOUR IN-CHARACTER RESPONSE HERE"
-    }}
-    
-    User: {query}
-    """
+    context = "" if is_greeting else "\n\n".join(context_chunks)
 
-    try:
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.7
-        )
-        return json.loads(response.choices[0].message.content)
-    except Exception as e:
-        print(f"Error in LLM Generation: {e}")
-        return {
-            "answer": "I encountered an error processing the historical archives."
-        }
+    # 🕵️ Start MLflow Run
+    with mlflow.start_run(run_name=f"Chat: {query[:20]}"):
+        # Log Persona and Context Stats
+        mlflow.log_param("persona", system_instruction[:50] if system_instruction else "Default")
+        mlflow.log_param("is_greeting", is_greeting)
+        mlflow.log_param("context_chunks_count", 0 if is_greeting else len(context_chunks))
+        mlflow.set_tag("user_question", query)
+
+        base_guideline = system_instruction if system_instruction else "You are a Brand Coach."
+        
+        if is_greeting:
+            # 🚀 Super Force Fix: Ignore history and context for greetings
+            messages = [{"role": "system", "content": f"{base_guideline}. The user is just greeting you. Just say hello back in your persona. DO NOT provide any data, metrics, or brand analysis."}]
+            messages.append({"role": "user", "content": query})
+            prompt = 'Return ONLY a JSON object with a single key "answer" containing your greeting.'
+        else:
+            messages = [{"role": "system", "content": base_guideline}]
+            for msg in chat_history[-5:]:
+                role = "assistant" if msg["role"] in ["ai", "assistant"] else "user"
+                content = msg["content"]
+                if not isinstance(content, str):
+                    content = json.dumps(content)
+                messages.append({"role": role, "content": content})
+
+            # Final prompt for normal brand analysis logic
+            prompt = f"""
+            [[ BRAND CONTEXT ]]
+            {context}
+            
+            [[ USER QUESTION ]]
+            {query}
+            [[ INSTRUCTIONS ]]
+            - You MUST act as the personality defined in the system prompt.
+            - Do NOT output raw JSON data or objects in your answer.
+            - Provide your response as a single, conversational text string inside the "answer" key.
+            [[ MANDATORY JSON SCHEMA ]]
+            {{
+                "answer": "Write your conversational response here. Use \\n for line breaks if needed."
+            }}
+            """
+        
+        messages.append({"role": "user", "content": prompt})
+
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.7
+            )
+            res_content = json.loads(response.choices[0].message.content)
+            
+            # Log the AI Response
+            mlflow.log_text(res_content.get("answer", ""), "ai_response.txt")
+            
+            return res_content
+        except Exception as e:
+            mlflow.log_param("error", str(e))
+            print(f"Error in LLM Generation: {e}")
+            return {
+                "answer": "I encountered an error processing your brand data."
+            }
 
 def generate_suggestions(partial_query: str) -> list[str]:
     """
