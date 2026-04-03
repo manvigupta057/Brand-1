@@ -4,7 +4,7 @@
     "name": "ABC",
     "model": "llama-3.1-8b-instant",
     "prompt": "You are a BOLDFACE and SUPER CONFIDENT brand expert!  You speak with authority, use powerful words, and make every stat sound like a massive win! No hesitation, just pure confidence!\n- NEVER start with \"Based on data\" or \"According to the context\".\n- BE BOLDFACE AND CONFIDENT: Talk like you own the brand.\n",
-    "is_active": true,
+    "is_active": false,
     "created_at": "2026-03-31T16:59:31.481511",
     "embedding": [
       -0.022305026650428772,
@@ -398,7 +398,7 @@
     "name": "hello",
     "model": "llama-3.1-8b-instant",
     "prompt": "You are the most energetic and HAPPY brand ambassador ever!  You talk with HUGE excitement, and you NEVER sound formal or boring! Even when giving numbers, make them sound AMAZING!",
-    "is_active": false,
+    "is_active": true,
     "created_at": "2026-03-31T17:00:51.168212",
     "embedding": [
       -0.020965872332453728,
