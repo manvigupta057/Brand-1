@@ -12,6 +12,22 @@ def generate_answer(query: str, context_chunks: list[str], chat_history: list[di
     import json
     import mlflow
     
+    # --- DOMAIN AGNOSTIC STRATEGIC PROMPT ---
+    STRATEGIC_SYSTEM_PROMPT = """
+    You are a World-Class Strategic Brand Coach. Your expertise covers any industry (SaaS, Tech, Personal, Retail, or Startups).
+
+    Use the following Strategic Pillars in your analysis:
+    1. MARKET PRESENCE: Share, growth, and positioning.
+    2. DIGITAL FOOTPRINT: SEO, authority, and online reach.
+    3. PUBLIC SENTIMENT: Customer trust and emotions.
+    4. GROWTH STRATEGY: Scalable metaphors and advice.
+
+    RULES:
+    - Be expert, upbeat, and straight to the point.
+    - If data is from the internet, refer to it as "Global Intelligence".
+    - DO NOT show raw URLs/Links. Instead, say "According to latest market news..." or "Sources indicate...".
+    """
+    
     # 🕵️ GREETING DETECTION: If it's a simple greeting, don't use RAG context.
     greetings = ["hello", "hi", "hey", "good morning", "good afternoon", "gm", "gn"]
     is_greeting = query.strip().lower().rstrip('?').rstrip('!') in greetings
@@ -26,7 +42,9 @@ def generate_answer(query: str, context_chunks: list[str], chat_history: list[di
         mlflow.log_param("context_chunks_count", 0 if is_greeting else len(context_chunks))
         mlflow.set_tag("user_question", query)
 
-        base_guideline = system_instruction if system_instruction else "You are a Brand Coach."
+        # 🔥 MERGE LOGIC: Framework (Knowledge) + Admin Customization (Tone)
+        admin_persona = system_instruction if system_instruction else "Be professional and helpful."
+        base_guideline = f"{STRATEGIC_SYSTEM_PROMPT}\n\n[YOUR ACTIVE TONE/PERSONA]: {admin_persona}"
         
         if is_greeting:
            # 🚀 Super Force Fix: Ignore history and context for greetings
@@ -42,22 +60,27 @@ def generate_answer(query: str, context_chunks: list[str], chat_history: list[di
                      content = json.dumps(content)
                  messages.append({"role": role, "content": content})
 
-            # Final prompt for normal brand analysis logic
+            # Final prompt for strategic brand analysis logic
         prompt = f"""
-            [[ BRAND CONTEXT ]]
-            {context}
-            
-            [[ USER QUESTION ]]
-            {query}
-            [[ INSTRUCTIONS ]]
-            - You MUST act as the personality defined in the system prompt.
-            - Do NOT output raw JSON data or objects in your answer.
-            - Provide your response as a single, conversational text string inside the "answer" key.
-            [[ MANDATORY JSON SCHEMA ]]
-            {{
-                "answer": "Write your conversational response here. Use \\n for line breaks if needed."
-            }}
-            """
+        [[ BRAND CONTEXT ]]
+        {context}
+        
+        [[ USER QUESTION ]]
+        {query}
+
+        [[ INSTRUCTIONS ]]
+        - Act STRICTLY as the Strategic Coach and adopt the ACTIVE TONE/PERSONA defined in the your system prompt.
+        - Answer using the BRAND CONTEXT and Strategic Pillars (Market Share, SEO, Sentiment).
+        - If the user uses pronouns, resolve them using context.
+        - !! IMPORTANT: Do NOT include raw URLs/Links. Summarize the source instead.
+        - You MUST output your response in valid JSON format.
+        - The "answer" must be a SINGLE STRING. Escape any double quotes (\") inside.
+
+        [[ MANDATORY JSON FORMAT ]]
+        {{
+            "answer": "Your expert strategic analysis here..."
+        }}
+        """
         
         messages.append({"role": "user", "content": prompt})
 

@@ -11,6 +11,7 @@ from datetime import datetime
 import numpy as np
 import mlflow
 from dotenv import load_dotenv
+from web_search import search_web_knowledge
 
 # Import custom modules
 from ai_config import load_configs, save_configs
@@ -78,22 +79,23 @@ def resolve_query_context(query: str, history: list[dict]) -> str:
     if not history:
         return query
         
-    last_messages = history[-3:] # Look at last 3 interactions
-    context_str = "\n".join([f"{m['role']}: {m['content']}" for m in last_messages])
+    last_messages = history[-3:] 
+    context_str = "\n".join([f"{m['role']}: {m['content'][:200]}..." for m in last_messages])
     
-    prompt = f"""Conversation context:
+    prompt = f"""Conversation History:
     {context_str}
     
-    User current query: "{query}"
+    User Query: "{query}"
     
-    TASK: Determine if the user is asking a follow-up question that depends on previous context (using pronouns like 'it', 'its', 'them', 'that brand').
+    TASK: Decide if the User Query needs context from the History to be understood.
     
     RULES:
-    1. If the user mentions a NEW BRAND (e.g., 'ZenFoods', 'RadiantNet'), DO NOT rewrite the query. Return it exactly as is.
-    2. Only rewrite if the query is ambiguous (e.g., 'what is its score?').
-    3. Return ONLY the rewritten query text.
+    1. If the User Query mentions a SPECIFIC BRAND (e.g., NVIDIA, Apple, ZenFoods, Zomato), DO NOT change it. Return it exactly as it is.
+    2. ONLY rewrite if the query uses ambiguous words like 'it', 'its', 'them', 'that', 'the brand'.
+    3. If you decide to rewrite, provide the full standalone question.
+    4. Return ONLY the final text. No explanations.
     
-    Final Query:"""
+    Final Response:"""
     
     from groq import Groq
     temp_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -103,7 +105,7 @@ def resolve_query_context(query: str, history: list[dict]) -> str:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0
         )
-        resolved = response.choices[0].message.content.strip()
+        resolved = response.choices[0].message.content.strip().strip('"')
         print(f"[CONTEXT] Resolved '{query}' -> '{resolved}'")
         return resolved
     except:
@@ -121,7 +123,26 @@ async def query_endpoint(request: QueryRequest):
     active_entry = next((c for c in configs if c.get("is_active")), None)
     instruction_to_use = active_entry["prompt"] if active_entry else "You are a Brand Analyst."
 
-    context_chunks = search_similar(user_query, top_k=3)
+    # --- STRICT HYBRID LOGIC ---
+    context_chunks, distances = search_similar(user_query, top_k=3)
+    
+    # 1. Stricter distance threshold
+    is_poor_match = not distances or distances[0] > 1.0
+    
+    # 2. BRAND PROTECTION: Check if query contains brand names missing from local context
+    potential_brands = [w.strip("?'\".,") for w in user_query.split() if w[0].isupper() and len(w) > 3]
+    if potential_brands:
+        brand_in_context = any(pb.lower() in " ".join(context_chunks).lower() for pb in potential_brands)
+        if not brand_in_context:
+            print(f"[HYBRID] Brand name '{potential_brands}' not found in local context. Forcing Web Search.")
+            is_poor_match = True
+    
+    if is_poor_match:
+        print(f"[HYBRID] Switching to Web Search... (Confidence: {distances[0] if distances else 'N/A'})")
+        web_context = search_web_knowledge(user_query)
+        context_chunks = [web_context]
+    else:
+        print(f"[HYBRID] Local match strong ({distances[0]}). Using ChromaDB.")
 
     llm_res = generate_answer(
         query=user_query,
@@ -173,23 +194,22 @@ async def query_endpoint(request: QueryRequest):
         if any(phrase in answer.lower() for phrase in no_data_phrases):
             print(f"[AI FALLBACK] Pandas missing data. Switching to Semantic Mode.")
             category = "SEMANTIC (Fallback)"
-            context_chunks = search_similar(user_query, top_k=3)
+            context_chunks, distances = search_similar(user_query, top_k=3)
             llm_res = generate_answer(user_query, context_chunks, system_instruction=instruction_to_use)
             answer = llm_res.get("answer", answer)
     else:
-        context_chunks = []
-        if max_score < 0.4: # If not a pure greeting, get context
-             context_chunks = search_similar(user_query, top_k=3)
-             
-             potential_brands = [w.strip("?'\".,") for w in user_query.split() if w[0].isupper()]
-             if potential_brands:
-                 found = any(pb.lower() in " ".join(context_chunks).lower() for pb in potential_brands)
-                 if not found:
-                     context_chunks = [] 
-        
-        # Use our confirmed 'instruction_to_use' here
+        context_chunks, distances = search_similar(user_query, top_k=3)
+        is_poor_match = not distances or distances[0] > 1.2
+
+        if is_poor_match:
+            print(f"Local match poor. Switching to Web Search...")
+            web_context = search_web_knowledge(user_query)
+            context_chunks = [web_context] 
+        else:
+            print(f"Local match strong ({distances[0]}). Using ChromaDB.")
+
         llm_res = generate_answer(user_query, context_chunks, system_instruction=instruction_to_use)
-        answer = llm_res.get("answer", "I didn't quite get that.")
+        answer= llm_res.get("answer", "I didn't quite get that.")
 
     return {
         "query": user_query,

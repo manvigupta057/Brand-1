@@ -21,7 +21,7 @@ def get_embedding_model():
     return _embedding_model
 
 
-def search_similar(query: str, top_k: int = 5) -> list[str]:
+def search_similar(query: str, top_k: int = 5):
     """
     Takes the user's question, converts it to a vector,
     finds the most similar rows in the brand dataset.
@@ -39,4 +39,6 @@ def search_similar(query: str, top_k: int = 5) -> list[str]:
 
     # Extract matched documents
     matched_docs = results["documents"][0]
-    return matched_docs
+    distances = results["distances"][0]
+
+    return matched_docs, distances
