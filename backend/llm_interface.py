@@ -28,36 +28,29 @@ def generate_answer(query: str, context_chunks: list[str], chat_history: list[di
 
         base_guideline = system_instruction if system_instruction else "You are a Brand Coach."
         
-        if is_greeting:
-            # 🚀 Super Force Fix: Ignore history and context for greetings
-            messages = [{"role": "system", "content": f"{base_guideline}. The user is just greeting you. Just say hello back in your persona. DO NOT provide any data, metrics, or brand analysis."}]
-            messages.append({"role": "user", "content": query})
-            prompt = 'Return ONLY a JSON object with a single key "answer" containing your greeting.'
-        else:
-            messages = [{"role": "system", "content": base_guideline}]
-            for msg in chat_history[-5:]:
-                role = "assistant" if msg["role"] in ["ai", "assistant"] else "user"
-                content = msg["content"]
-                if not isinstance(content, str):
-                    content = json.dumps(content)
-                messages.append({"role": role, "content": content})
+        # 🧪 DEBUG MODE: CAG (History) Disabled
+        # We only provide the persona and the current query context.
+        messages = [{"role": "system", "content": base_guideline}]
+        
+        # Define context for RAG (even if not using history)
+        context = "\n\n".join(context_chunks)
 
-            # Final prompt for normal brand analysis logic
-            prompt = f"""
-            [[ BRAND CONTEXT ]]
-            {context}
-            
-            [[ USER QUESTION ]]
-            {query}
-            [[ INSTRUCTIONS ]]
-            - You MUST act as the personality defined in the system prompt.
-            - Do NOT output raw JSON data or objects in your answer.
-            - Provide your response as a single, conversational text string inside the "answer" key.
-            [[ MANDATORY JSON SCHEMA ]]
-            {{
-                "answer": "Write your conversational response here. Use \\n for line breaks if needed."
-            }}
-            """
+        # Final prompt for normal brand analysis logic (No Greeting-specific branch)
+        prompt = f"""
+        [[ BRAND CONTEXT ]]
+        {context}
+        
+        [[ USER QUESTION ]]
+        {query}
+        [[ INSTRUCTIONS ]]
+        - You MUST act as the personality defined in the system prompt.
+        - Do NOT output raw JSON data or objects in your answer.
+        - Provide your response as a single, conversational text string inside the "answer" key.
+        [[ MANDATORY JSON SCHEMA ]]
+        {{
+            "answer": "Write your conversational response here. Use \\n for line breaks if needed."
+        }}
+        """
         
         messages.append({"role": "user", "content": prompt})
 
