@@ -89,11 +89,12 @@ const Chat = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { answer } = response.data;
+      const { answer, suggestions } = response.data;
 
       setMessages(prev => [...prev, {
         role: 'ai',
-        content: answer
+        content: answer,
+        chips: suggestions || []
       }]);
 
     } catch (error) {
@@ -168,13 +169,30 @@ const Chat = () => {
           {messages.map((msg, idx) => {
             const safeContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
             return (
-              <div key={idx} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-slate-800' : 'bg-blue-600'}`}>
-                  {msg.role === 'user' ? <User size={20} /> : <Zap size={20} />}
+              <div key={idx} className="flex flex-col gap-3">
+                <div className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-slate-800' : 'bg-blue-600'}`}>
+                    {msg.role === 'user' ? <User size={20} /> : <Zap size={20} />}
+                  </div>
+                  <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
+                    <p className="text-sm leading-relaxed">{safeContent}</p>
+                  </div>
                 </div>
-                <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
-                  <p className="text-sm leading-relaxed">{safeContent}</p>
-                </div>
+
+                {/* [TASK 4] Quick Reply Chips UI */}
+                {msg.role === 'ai' && msg.chips && msg.chips.length > 0 && (
+                  <div className="flex flex-wrap gap-2 ml-14 animate-in fade-in slide-in-from-left-2 duration-500">
+                    {msg.chips.map((chip, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSendMessage(null, chip)}
+                        className="bg-white/5 border border-white/10 hover:bg-blue-600/20 hover:border-blue-600/30 px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-400 hover:text-blue-400 transition-all backdrop-blur-md shadow-lg"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

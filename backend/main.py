@@ -151,10 +151,15 @@ async def query_endpoint(request: QueryRequest):
         system_instruction=instruction_to_use
     )
     answer = llm_res.get("answer", "I didn't quite get that.")
+    
+    # [TASK 4] Dynamic Suggestions (Chips)
+    from llm_interface import generate_suggestions
+    chips = generate_suggestions(answer)[:3]
 
-    return{
+    return {
         "query": user_query,
         "answer": answer,
+        "suggestions": chips,
         "category": "BRAND_COACH",
         "user": "Auth User"
     }
