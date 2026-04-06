@@ -15,6 +15,7 @@ sentence-transformers
 pandas
 numpy
 groq
+duckduckgo-search
 
 # Document & Image Processing
 easyocr
@@ -30,3 +31,5 @@ python-multipart
 mlflow
 
 mlflow
+
+sqlalchemy

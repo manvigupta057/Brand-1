@@ -33,7 +33,9 @@ def create_access_token(data: dict):
 
 @router.get("/auth/login")
 async def login(request: Request):
-    redirect_uri = "http://localhost:8000/auth/callback"
+    print(f"[AUTH] Login attempt initiated from {request.client.host}")
+    redirect_uri = request.url_for('auth_callback')
+    print(f"[AUTH] Redirecting to Google via {redirect_uri}")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 from fastapi.responses import RedirectResponse

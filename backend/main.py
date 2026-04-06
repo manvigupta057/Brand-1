@@ -20,6 +20,8 @@ from llm_interface import generate_answer, generate_suggestions
 from auth import router as auth_router
 from query_router import route_query, parse_data_intent
 from pandas_engine import execute_data_query
+import database, models
+from sqlalchemy.orm import Session
 
 load_dotenv()
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
@@ -38,6 +40,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+
+# Initialize DB tables
+models.Base.metadata.create_all(bind=database.engine)
 
 class QueryRequest(BaseModel):
     query: str
@@ -151,16 +156,21 @@ async def query_endpoint(request: QueryRequest):
         system_instruction=instruction_to_use
     )
     answer = llm_res.get("answer", "I didn't quite get that.")
+    brand_type = llm_res.get("brand_type")
     
-    # [TASK 4] Dynamic Suggestions (Chips)
+    # Generate Quick Suggestion Chips
     from llm_interface import generate_suggestions
     chips = generate_suggestions(answer)[:3]
+
+    if brand_type:
+        answer = f"[{brand_type.upper()}] {answer}"
 
     return {
         "query": user_query,
         "answer": answer,
         "suggestions": chips,
         "category": "BRAND_COACH",
+        "brand_type": brand_type,
         "user": "Auth User"
     }
 
@@ -222,6 +232,23 @@ async def query_endpoint(request: QueryRequest):
         "category": category,
         "user": "Demo User"
     }
+
+@app.post("/api/onboarding")
+async def save_onboarding(data: dict, db: Session = Depends(database.get_db)):
+    new_entry = models.OnboardingResponse(
+        full_name=data.get("fullName"),
+        email=data.get("email"),
+        role=data.get("role"),
+        brand_name=data.get("brandName"),
+        industry=data.get("industry"),
+        tagline=data.get("tagline"),
+        audience=data.get("audience"),
+        competitor=data.get("competitor"),
+        goal=data.get("goal")
+    )
+    db.add(new_entry)
+    db.commit()
+    return {"message": "Onboarding saved successfully"}
 
 @app.post("/suggestions")
 async def suggestions_endpoint(request: SuggestionRequest):

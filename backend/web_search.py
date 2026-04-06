@@ -1,5 +1,5 @@
 import os
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 
 def search_web_knowledge(query: str, max_results: int = 3):
     print(f"Fetching real-time data for: {query}")

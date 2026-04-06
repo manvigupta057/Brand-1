@@ -358,5 +358,65 @@ body {
 	transition: opacity 0.4s ease-out;
 }
 
+/* Onboarding Premium Styles */
+:root {
+  --onboarding-bg: #060a12;
+  --onboarding-panel: rgba(11, 18, 32, 0.8);
+  --onboarding-border: rgba(255, 255, 255, 0.1);
+  --onboarding-blue: #2f6bff;
+}
+
+.onboarding-glass {
+  background: var(--onboarding-panel);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--onboarding-border);
+  border-radius: 24px;
+}
+
+.onboarding-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  padding: 12px 16px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.onboarding-input.with-icon {
+  padding-left: 48px !important;
+}
+
+.onboarding-input option {
+  background-color: #0b1220 !important;
+  color: white !important;
+}
+
+/* Specific fix for select default state in some browsers */
+select.onboarding-input {
+  color: white !important;
+}
+
+.onboarding-input:focus {
+  border-color: var(--onboarding-blue) !important;
+  box-shadow: 0 0 0 4px rgba(47, 107, 255, 0.15);
+}
+
+.onboarding-btn-primary {
+  background: linear-gradient(180deg, #2f6bff, #1d4ed8);
+  box-shadow: 0 10px 20px rgba(29, 78, 216, 0.3);
+  transition: all 0.2s ease;
+}
+
+.onboarding-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(29, 78, 216, 0.4);
+}
+
+.onboarding-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+
 
 

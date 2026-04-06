@@ -70,6 +70,7 @@ def generate_answer(query: str, context_chunks: list[str], chat_history: list[di
 
         [[ INSTRUCTIONS ]]
         - Act STRICTLY as the Strategic Coach and adopt the ACTIVE TONE/PERSONA defined in the your system prompt.
+        - IDENTIFY INDUSTRY: Determine the business type (e.g., SaaS, IT, Retail) and put it in the "brand_type" field.
         - Answer using the BRAND CONTEXT and Strategic Pillars (Market Share, SEO, Sentiment).
         - If the user uses pronouns, resolve them using context.
         - !! IMPORTANT: Do NOT include raw URLs/Links. Summarize the source instead.
@@ -78,6 +79,7 @@ def generate_answer(query: str, context_chunks: list[str], chat_history: list[di
 
         [[ MANDATORY JSON FORMAT ]]
         {{
+            "brand_type": "Detected Industry (e.g. SaaS, Fintech, etc.)",
             "answer": "Your expert strategic analysis here..."
         }}
         """

@@ -28,6 +28,8 @@ const Chat = () => {
   const [input, setInput] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [abortController, setAbortController] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll chat to bottom
@@ -74,6 +76,13 @@ const Chat = () => {
     const messageText = messageOverride || input;
     if (!messageText.trim()) return;
 
+    if (abortController) {
+      abortController.abort();
+    }
+
+    const controller = new AbortController();
+    setAbortController(controller);
+
     const userMessage = messageText.trim();
     if (!messageOverride) setInput('');
 
@@ -86,22 +95,47 @@ const Chat = () => {
           query: userMessage,
           history: messages
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal 
+        }
       );
 
-      const { answer, suggestions } = response.data;
+      const { answer, suggestions, brand_type } = response.data;
 
       setMessages(prev => [...prev, {
         role: 'ai',
         content: answer,
+        brand_type: brand_type,
         chips: suggestions || []
       }]);
 
     } catch (error) {
-      console.error("Error fetching AI response:", error);
-      setMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error connecting to the server.' }]);
+      if (axios.isCancel(error)) {
+        console.log("Request cancelled");
+        setMessages(prev => [...prev, { role: 'ai', content: 'Generation stopped.' }]);
+      } else {
+        console.error("Error fetching AI response:", error);
+        setMessages(prev => [...prev, { role: 'ai', content: 'Sorry, I encountered an error connecting to the server.' }]);
+      }
     } finally {
       setIsLoading(false);
+      setAbortController(null);
+    }
+  };
+
+  const stopGeneration = () => {
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setIsLoading(false);
+      
+      // Optional: Add a temporary local message for feedback
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: 'Generation cancelled by user.',
+        isSystem: true 
+      }]);
     }
   };
 
@@ -174,8 +208,16 @@ const Chat = () => {
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${msg.role === 'user' ? 'bg-slate-800' : 'bg-blue-600'}`}>
                     {msg.role === 'user' ? <User size={20} /> : <Zap size={20} />}
                   </div>
-                  <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
-                    <p className="text-sm leading-relaxed">{safeContent}</p>
+                  <div className={`max-w-[80%] px-6 py-4 rounded-3xl ${msg.role === 'user' ? 'bg-blue-600/80 text-white rounded-tr-none border border-blue-400/20' : msg.isSystem ? 'bg-red-500/10 border border-red-500/20 text-red-400/80 italic text-xs' : 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-none backdrop-blur-md'}`}>
+                    {msg.brand_type && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="h-1 w-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                        <span className="text-[10px] font-black text-blue-400 tracking-[0.2em] uppercase bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                          {msg.brand_type}
+                        </span>
+                      </div>
+                    )}
+                    <p className={msg.isSystem ? "" : "text-sm leading-relaxed"}>{safeContent}</p>
                   </div>
                 </div>
 
@@ -237,8 +279,24 @@ const Chat = () => {
         )}
 
         {/* Input */}
-        <div className="absolute bottom-8 left-4 right-4 max-w-4xl mx-auto">
-          <form onSubmit={handleSendMessage} className="bg-white/5 border border-white/10 p-2 rounded-[2.5rem] backdrop-blur-2xl shadow-2xl flex items-center gap-2">
+        <div className="absolute bottom-8 left-4 right-4 max-w-4xl mx-auto group">
+          {isLoading && (
+            <div className="absolute -top-14 left-1/2 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <button
+                type="button"
+                onClick={stopGeneration}
+                className="flex items-center gap-2 px-6 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-400 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(239,68,68,0.1)] hover:shadow-[0_0_25px_rgba(239,68,68,0.2)] group"
+              >
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute inset-0 bg-red-500 rounded-sm animate-ping opacity-20" />
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                </div>
+                STOP GENERATION
+              </button>
+            </div>
+          )}
+          
+          <form onSubmit={handleSendMessage} className="bg-white/5 border border-white/10 p-2 rounded-[2.5rem] backdrop-blur-2xl shadow-2xl flex items-center gap-2 focus-within:border-blue-500/30 transition-all">
             <input
               type="text"
               value={input}
@@ -250,9 +308,13 @@ const Chat = () => {
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="bg-blue-600 text-white p-4 rounded-full hover:bg-blue-500 transition-all disabled:opacity-50 disabled:scale-95 active:scale-95 shadow-xl shadow-blue-600/20"
+              className={`p-4 rounded-full transition-all shadow-xl ${
+                !input.trim() || isLoading 
+                ? 'bg-slate-800 text-slate-600 border border-white/5' 
+                : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-600/20 active:scale-95'
+              }`}
             >
-              <Send size={18} />
+              {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
             </button>
           </form>
         </div>

@@ -10,6 +10,7 @@ import {
   MdHome,
   MdBarChart,
   MdPerson,
+  MdLayers,
 } from "react-icons/md";
 
 const routes = [
