@@ -3,7 +3,9 @@ import axios from 'axios';
 import { User, LogOut, Send, Bot, UserRound, Loader2, Zap, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8000' 
+  : `https://${window.location.hostname.replace('-5173', '-8000')}`;
 
 const Chat = () => {
   const navigate = useNavigate();
@@ -29,13 +31,30 @@ const Chat = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [abortController, setAbortController] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll chat to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Fetch History on Page Load
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!token) return;
+      try {
+        const response = await axios.get(`${API_BASE}/api/chat/history`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.length > 0) {
+          setMessages(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch history:", err);
+      }
+    };
+    fetchHistory();
+  }, [token]);
 
   useEffect(() => {
     scrollToBottom();
@@ -68,6 +87,18 @@ const Chat = () => {
     localStorage.removeItem('token');
     setToken(null);
     navigate('/');
+  };
+
+  const handleClearChat = async () => {
+    if (!window.confirm("Are you sure you want to clear chat history?")) return;
+    try {
+      await axios.delete(`${API_BASE}/api/chat/clear`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessages([{ role: 'ai', content: 'Chat history cleared. How can I help you today?' }]);
+    } catch (err) {
+      console.error("Clear error:", err);
+    }
   };
 
   const handleSendMessage = async (e, messageOverride = null) => {
@@ -162,7 +193,7 @@ const Chat = () => {
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 font-sans flex flex-col">
       {/* Navbar */}
-      <nav className="z-50 flex items-center justify-between px-8 py-4 bg-black/40 backdrop-blur-md border-b border-white/5 shrink-0">
+      <nav className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-8 py-4 bg-black/80 backdrop-blur-xl border-b border-white/5 shrink-0">
         <div className="flex items-center gap-6">
           <button onClick={() => navigate('/')} className="p-2 hover:bg-white/5 rounded-xl transition-colors text-slate-400 hover:text-white">
             <ArrowLeft size={20} />
@@ -191,6 +222,12 @@ const Chat = () => {
               </div>
             </div>
           )}
+          <button 
+            onClick={handleClearChat} 
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:bg-red-500/10 hover:border-red-500/20 rounded-xl transition-all text-slate-400 hover:text-red-400 text-xs font-bold uppercase tracking-wider"
+          >
+            Clear Chat
+          </button>
           <button onClick={logout} title="Logout" className="p-2 bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 rounded-xl transition-all text-slate-400 hover:text-red-400">
             <LogOut size={18} />
           </button>
@@ -198,7 +235,7 @@ const Chat = () => {
       </nav>
 
       {/* Chat Area */}
-      <div className="flex-1 max-w-5xl w-full mx-auto p-4 flex flex-col overflow-hidden relative">
+      <div className="flex-1 max-w-5xl w-full mx-auto p-4 pt-20 flex flex-col overflow-hidden relative">
         <div className="flex-1 overflow-y-auto space-y-8 px-4 pb-32 pt-8 scrollbar-hide">
           {messages.map((msg, idx) => {
             const safeContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);

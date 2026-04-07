@@ -5,7 +5,9 @@ def search_web_knowledge(query: str, max_results: int = 3):
     print(f"Fetching real-time data for: {query}")
     results = []
     try:
+        from duckduckgo_search import DDGS
         with DDGS() as ddgs:
+            # We use text generator with a timeout for faster responses
             search_gen = ddgs.text(query, region='wt-wt', safesearch='off', timelimit='y')
             for i, result in enumerate(search_gen):
                 if i >= max_results:

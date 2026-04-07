@@ -12,12 +12,14 @@ import numpy as np
 import mlflow
 from dotenv import load_dotenv
 from web_search import search_web_knowledge
+from auth import router as auth_router, get_current_user
+from sqlalchemy.orm import Session
 
 # Import custom modules
 from ai_config import load_configs, save_configs
 from vector_store import get_embedding_model, search_similar
 from llm_interface import generate_answer, generate_suggestions
-from auth import router as auth_router
+from auth import router as auth_router, get_current_user
 from query_router import route_query, parse_data_intent
 from pandas_engine import execute_data_query
 import database, models
@@ -117,38 +119,37 @@ def resolve_query_context(query: str, history: list[dict]) -> str:
         return query
 
 @app.post("/query")
-async def query_endpoint(request: QueryRequest):
-    # Resolve context/pronouns first
+async def query_endpoint(request: QueryRequest, db: Session = Depends(database.get_db), current_user: str = Depends(get_current_user)):
+    # 1. Resolve context/pronouns first
     user_query = resolve_query_context(request.query, request.history)
 
-    model = get_embedding_model()
-    query_vector = model.encode(user_query).tolist()
+    # 2. 🕵️ USER Message database mein save karein
+    db_user_msg = models.ChatMessage(user_email=current_user, role="user", content=request.query)
+    db.add(db_user_msg)
+    db.commit()
 
+    # 3. AI Logic (RAG, Web Search, etc.)
+    model = get_embedding_model()
     configs = load_configs()
     active_entry = next((c for c in configs if c.get("is_active")), None)
     instruction_to_use = active_entry["prompt"] if active_entry else "You are a Brand Analyst."
 
     # --- STRICT HYBRID LOGIC ---
     context_chunks, distances = search_similar(user_query, top_k=3)
-    
-    # 1. Stricter distance threshold
     is_poor_match = not distances or distances[0] > 1.0
     
-    # 2. BRAND PROTECTION: Check if query contains brand names missing from local context
+    # Brand Protection
     potential_brands = [w.strip("?'\".,") for w in user_query.split() if w[0].isupper() and len(w) > 3]
     if potential_brands:
         brand_in_context = any(pb.lower() in " ".join(context_chunks).lower() for pb in potential_brands)
         if not brand_in_context:
-            print(f"[HYBRID] Brand name '{potential_brands}' not found in local context. Forcing Web Search.")
             is_poor_match = True
     
     if is_poor_match:
-        print(f"[HYBRID] Switching to Web Search... (Confidence: {distances[0] if distances else 'N/A'})")
         web_context = search_web_knowledge(user_query)
         context_chunks = [web_context]
-    else:
-        print(f"[HYBRID] Local match strong ({distances[0]}). Using ChromaDB.")
-
+    
+    # 4. Generate AI Answer
     llm_res = generate_answer(
         query=user_query,
         context_chunks=context_chunks,
@@ -158,79 +159,26 @@ async def query_endpoint(request: QueryRequest):
     answer = llm_res.get("answer", "I didn't quite get that.")
     brand_type = llm_res.get("brand_type")
     
-    # Generate Quick Suggestion Chips
+    # 5. 🕵️ AI Response database mein save karein
+    db_ai_msg = models.ChatMessage(user_email=current_user, role="ai", content=answer)
+    db.add(db_ai_msg)
+    db.commit()
+
+    # 6. Suggestions generate karein
     from llm_interface import generate_suggestions
     chips = generate_suggestions(answer)[:3]
 
     if brand_type:
         answer = f"[{brand_type.upper()}] {answer}"
 
+    # 7. Final Response
     return {
         "query": user_query,
         "answer": answer,
         "suggestions": chips,
         "category": "BRAND_COACH",
         "brand_type": brand_type,
-        "user": "Auth User"
-    }
-
-    model = get_embedding_model()
-    query_vector = model.encode(user_query).tolist()
-    print(f"\nUser Question Embedding Generated! Size: {len(query_vector)}")
-    print(f"[DEBUG] Vector preview: {query_vector[:3]}...") 
-    
-    # --- STEP 3: Persona Selection (Dashboard Priority) ---
-    configs = load_configs()
-    active_entry = next((c for c in configs if c.get("is_active")), None)
-    
-    # Use Dashboard Active Prompt as the Primary Identity
-    primary_instruction = active_entry["prompt"] if active_entry else "You are a Brand Analyst."
-    print(f"[AI ROUTER] Active Dashboard Persona: {active_entry.get('name') if active_entry else 'None'}")
-
-    # --- STEP 4: Similarity Match (For special instructions) ---
-    best_prompt = primary_instruction
-    max_score = -1
-    for config in [c for c in configs if c.get("embedding")]:
-        score = calculate_cosine_similarity(query_vector, config["embedding"])
-        if score > max_score:
-            max_score = score
-            if score > 0.6: # High threshold to switch persona dynamically
-                best_prompt = config["prompt"]
-
-    print(f"[AI ROUTER] Final Match Score: {max_score:.4f} | Using Persona: {best_prompt[:30]}...")
-
-    # Step 5: Routing & Intelligence
-    category = route_query(user_query)
-    instruction_to_use = best_prompt
-    
-    if category == "DATA":
-        answer = execute_data_query(user_query)
-        no_data_phrases = ["sorry", "not found", "didn't find", "empty", "no data", "unavailable", "don't have"]
-        if any(phrase in answer.lower() for phrase in no_data_phrases):
-            print(f"[AI FALLBACK] Pandas missing data. Switching to Semantic Mode.")
-            category = "SEMANTIC (Fallback)"
-            context_chunks, distances = search_similar(user_query, top_k=3)
-            llm_res = generate_answer(user_query, context_chunks, system_instruction=instruction_to_use)
-            answer = llm_res.get("answer", answer)
-    else:
-        context_chunks, distances = search_similar(user_query, top_k=3)
-        is_poor_match = not distances or distances[0] > 1.2
-
-        if is_poor_match:
-            print(f"Local match poor. Switching to Web Search...")
-            web_context = search_web_knowledge(user_query)
-            context_chunks = [web_context] 
-        else:
-            print(f"Local match strong ({distances[0]}). Using ChromaDB.")
-
-        llm_res = generate_answer(user_query, context_chunks, system_instruction=instruction_to_use)
-        answer= llm_res.get("answer", "I didn't quite get that.")
-
-    return {
-        "query": user_query,
-        "answer": answer,
-        "category": category,
-        "user": "Demo User"
+        "user": current_user
     }
 
 @app.post("/api/onboarding")
@@ -377,6 +325,21 @@ def activate_ai_config(config_id: str):
         c["is_active"] = (c["id"] == config_id)
     save_configs(configs)
     return {"status": "Activated"}
+
+@app.get("/api/chat/history")
+async def get_chat_history(db: Session = Depends(database.get_db), current_user: str = Depends(get_current_user)):
+    messages = db.query(models.ChatMessage).filter(models.ChatMessage.user_email == current_user).order_by(models.ChatMessage.created_at.asc()).all()
+    return [{"role": m.role, "content": m.content} for m in messages]
+
+@app.delete("/api/chat/clear")
+async def clear_chat_history(db: Session = Depends(database.get_db), current_user: str = Depends(get_current_user)):
+    db.query(models.ChatMessage).filter(models.ChatMessage.user_email == current_user).delete()
+    db.commit()
+    return {"status": "success"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "Backend running"}
 
 if __name__ == "__main__":
     import uvicorn

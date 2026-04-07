@@ -12,11 +12,11 @@ const Home = () => {
     const token = urlParams.get('access_token');
     
     if (token) {
+      console.log("Token detected in URL, saving to local storage...");
       localStorage.setItem('token', token);
-      // Clean up URL
-      window.history.replaceState({}, document.title, "/");
-      console.log("Token successfully captured and saved.");
-      // Automatically redirect to chat
+      
+      // Clean up URL and force navigate
+      window.history.replaceState({}, document.title, window.location.pathname);
       navigate('/chat');
     }
   }, [navigate]);
@@ -64,7 +64,12 @@ const Home = () => {
         {/* Clean Google Login Section */}
         <div className="flex flex-col items-center justify-center gap-4 mb-20 z-20 relative">
           <button 
-            onClick={() => window.location.href = 'http://localhost:8000/auth/login'}
+            onClick={() => {
+              const apiBase = window.location.hostname === 'localhost' 
+                ? 'http://localhost:8000' 
+                : `https://${window.location.hostname.replace('-5173', '-8000')}`;
+              window.location.href = `${apiBase}/auth/login`;
+            }}
             className="group px-8 py-4 bg-white text-slate-900 rounded-full font-bold text-lg hover:bg-slate-100 transition-all flex items-center gap-3 shadow-xl hover:shadow-2xl hover:shadow-white/20 active:scale-95 border border-transparent"
           >
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-6 h-6" />

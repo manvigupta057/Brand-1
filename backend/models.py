@@ -16,3 +16,12 @@ class OnboardingResponse(Base):
     competitor = Column(String)
     goal = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String, index=True)
+    role = Column(String) # 'user' or 'ai'
+    content = Column(Text)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
